@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>周报整理助手</title>
+<style>
+  :root{
+    --primary:#3b6df0; --primary-dark:#2f56c9; --primary-light:#eef2fe;
+    --ok:#18a058; --warn:#e6a23c; --err:#d93026;
+    --bg:#f3f5f9; --card:#ffffff; --border:#e4e7ee; --text:#1f2329; --sub:#6b7280;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif;background:var(--bg);color:var(--text);font-size:14px}
+  .header{background:linear-gradient(135deg,#3153c9 0%,#3b6df0 55%,#5f8bff 100%);color:#fff;padding:22px 28px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  .header h1{font-size:20px;font-weight:700;letter-spacing:.5px}
+  .header .sub{font-size:12.5px;opacity:.85;margin-top:4px}
+  .badge{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.35);border-radius:20px;padding:4px 14px;font-size:12px}
+  .container{display:flex;gap:18px;max-width:1500px;margin:18px auto;padding:0 18px;align-items:flex-start}
+  .panel-left{width:430px;flex-shrink:0;background:var(--card);border-radius:14px;padding:20px;box-shadow:0 1px 4px rgba(15,25,55,.06)}
+  .panel-right{flex:1;display:flex;flex-direction:column;gap:16px;min-width:0}
+  .step-title{font-size:13px;font-weight:700;color:var(--sub);margin:18px 0 10px;display:flex;align-items:center;gap:6px}
+  .step-title:first-child{margin-top:0}
+  .step-title .dot{width:18px;height:18px;border-radius:50%;background:var(--primary);color:#fff;display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:700}
+  .tabs{display:flex;background:#eef0f5;border-radius:9px;padding:4px;gap:4px}
+  .tab-btn{flex:1;padding:8px 4px;border:none;background:transparent;cursor:pointer;border-radius:7px;font-size:13.5px;color:#5b6270;transition:.15s}
+  .tab-btn.active{background:#fff;color:var(--primary);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.08)}
+  .field{margin-bottom:12px}
+  .field label{display:block;font-size:12.5px;font-weight:600;color:#41464c;margin-bottom:6px}
+  .field input[type=text],.field select,.field textarea{width:100%;padding:9px 11px;border:1px solid var(--border);border-radius:8px;font-size:13.5px;background:#fbfcfe;transition:.15s;font-family:inherit}
+  .field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--primary);background:#fff;box-shadow:0 0 0 3px rgba(59,109,240,.12)}
+  .field textarea{height:150px;resize:vertical;font-size:12.5px;line-height:1.7}
+  .hint{font-size:11.5px;color:#9aa1ac;margin-top:5px;line-height:1.6}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;cursor:pointer;border-radius:8px;font-size:13.5px;transition:.15s;font-family:inherit}
+  .btn-fetch{width:100%;padding:9px;background:var(--primary-light);color:var(--primary);font-weight:600;margin-top:2px}
+  .btn-fetch:hover{background:#e2e9fd}
+  .btn-fetch:disabled{opacity:.55;cursor:not-allowed}
+  .btn-primary{width:100%;padding:12px;background:linear-gradient(135deg,#3b6df0,#2f56c9);color:#fff;font-size:15px;font-weight:700;letter-spacing:6px;margin-top:16px;box-shadow:0 3px 10px rgba(47,86,201,.3)}
+  .btn-primary:hover{filter:brightness(1.07)}
+  .btn-jump{padding:7px 14px;background:#fff7e8;color:#b26a00;border:1px solid #f3d19e;border-radius:8px;font-size:12.5px;cursor:pointer;margin-top:8px}
+  .btn-jump:hover{background:#ffefd5}
+  .status{font-size:12px;line-height:1.8;margin-top:8px;padding:0 2px;white-space:pre-wrap}
+  .status .ok{color:var(--ok)} .status .err{color:var(--err)} .status .warn{color:var(--warn)} .status .info{color:var(--sub)}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+  .chip{padding:4px 12px;border-radius:20px;background:#f0f3fa;border:1px solid var(--border);font-size:12.5px;cursor:pointer;color:#41464c;transition:.15s}
+  .chip:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light)}
+  .chip.active{background:var(--primary);border-color:var(--primary);color:#fff}
+  .week-nav{display:flex;align-items:center;gap:10px;background:#f7f8fb;border:1px solid var(--border);border-radius:9px;padding:7px 10px}
+  .week-nav button{width:30px;height:30px;border-radius:7px;border:1px solid var(--border);background:#fff;cursor:pointer;font-size:14px;color:#5b6270;transition:.15s}
+  .week-nav button:hover{border-color:var(--primary);color:var(--primary)}
+  .week-nav button.wk-today{width:auto;padding:0 10px;font-size:12px;flex-shrink:0}
+  .week-label{flex:1;text-align:center;font-size:13.5px}
+  .week-label b{color:var(--primary)}
+  .week-label .rel{display:inline-block;background:var(--primary-light);color:var(--primary);border-radius:5px;padding:1px 7px;font-size:11.5px;margin-left:7px;font-weight:600}
+  .result-card{background:var(--card);border-radius:14px;box-shadow:0 1px 4px rgba(15,25,55,.06);overflow:hidden}
+  .result-head{display:flex;align-items:center;justify-content:space-between;padding:15px 20px;border-bottom:1px solid #f0f2f6}
+  .result-head h2{font-size:15.5px;display:flex;align-items:center;gap:8px}
+  .result-head h2 .bar{width:4px;height:16px;border-radius:2px}
+  .result-head .meta{font-size:12px;color:#9aa1ac;margin-left:10px;font-weight:400}
+  .copy-btn{padding:7px 16px;border:1px solid var(--primary);color:#fff;background:var(--primary);border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:.15s}
+  .copy-btn:hover{background:var(--primary-dark);border-color:var(--primary-dark)}
+  .copy-btn.copied{background:var(--ok);border-color:var(--ok)}
+  .result-body{padding:18px 20px;white-space:pre-wrap;font-size:14px;line-height:2.15;min-height:120px;font-family:inherit}
+  .result-body.empty{color:#a6adba;text-align:center;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .preview{margin-top:16px;border-top:1px dashed var(--border);padding-top:12px}
+  .preview summary{cursor:pointer;font-size:13px;font-weight:600;color:var(--sub);user-select:none;padding:4px 0}
+  .preview summary:hover{color:var(--primary)}
+  .table-wrap{max-height:250px;overflow:auto;margin-top:10px;border:1px solid var(--border);border-radius:8px}
+  table{width:100%;border-collapse:collapse;font-size:12px}
+  th{position:sticky;top:0;background:#f5f7fb;z-index:1}
+  th,td{border-bottom:1px solid #eef0f5;padding:6px 9px;text-align:left;white-space:nowrap;max-width:320px;overflow:hidden;text-overflow:ellipsis}
+  td.wrap{white-space:normal;min-width:200px;line-height:1.6}
+  .tag{display:inline-block;border-radius:4px;padding:1px 7px;font-size:11px}
+  .tag.done{background:#e8f7ef;color:var(--ok)} .tag.plan{background:#fff4e5;color:#c07800}
+  .footer{max-width:1500px;margin:0 auto;padding:6px 20px 26px;font-size:11.5px;color:#9aa1ac;line-height:1.9}
+  .footer b{color:#6b7280}
+  .log{font-size:11.5px;background:#f7f8fb;border:1px solid var(--border);border-radius:8px;padding:8px 10px;margin-top:8px;max-height:110px;overflow:auto;line-height:1.9;white-space:pre-wrap;color:#5b6270;display:none}
+  @media (max-width:1000px){.container{flex-direction:column}.panel-left{width:100%}}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div>
+    <h1>📋 周报整理助手</h1>
+    <div class="sub">读取腾讯在线文档 · 按岗位模板整理 · 本周完成 / 下周计划</div>
+  </div>
+  <div class="badge" id="srcBadge">数据源：未载入</div>
+</header>
+
+<main class="container">
+  <!-- ============ 左侧：表单 ============ -->
+  <section class="panel-left">
+
+    <div class="step-title"><span class="dot">1</span> 数据来源</div>
+    <div class="tabs" id="srcTabs">
+      <button class="tab-btn active" data-pane="pane-online">在线地址获取</button>
+      <button class="tab-btn" data-pane="pane-manual">手动填写</button>
+    </div>
+
+    <div id="pane-online" style="margin-top:12px">
+      <div class="field">
+        <label>在线周报文档地址</label>
+        <input type="text" id="docUrl" placeholder="https://docs.qq.com/smartsheet/xxxx" value="https://docs.qq.com/smartsheet/DTkpuTWp3eXJnYm5M?tab=70hIWb">
+      </div>
+      <div class="field">
+        <label>本地数据代理（推荐 · 稳定直连）</label>
+        <input type="text" id="localProxy" value="http://127.0.0.1:8790">
+        <div class="hint">双击同目录 <b>「启动本地代理.command」</b> 启动后，在线获取将通过本机代理直连腾讯文档（自动完成Cookie流程，无需手动提供Cookie）。未启动时自动降级公共代理通道（成功率低）。</div>
+      </div>
+      <button class="btn btn-fetch" id="fetchBtn">⤓ 在线获取最新数据</button>
+      <div class="log" id="fetchLog"></div>
+      <div class="status" id="fetchStatus"></div>
+    </div>
+
+    <div id="pane-manual" style="margin-top:12px;display:none">
+      <div class="field">
+        <label>粘贴表格内容</label>
+        <textarea id="manualInput" placeholder="打开腾讯文档 → 框选表格区域（含表头）→ 复制 → 粘贴到此处&#10;&#10;示例（Tab 分隔）：&#10;智能表列&#9;工作内容&#9;负责人&#9;要求完成时间&#9;实际完成时间&#9;完成进度&#10;运维&#9;系统日常巡检&#9;张三&#9;2026-10-09&#9;2026-10-09&#9;100"></textarea>
+        <div class="hint">支持 Tab 分隔（Excel/腾讯文档直接复制）、竖线 Markdown 表格、逗号 CSV；表头需包含列名（工作内容 / 负责人 / 完成进度 / 时间 等）。</div>
+      </div>
+      <button class="btn btn-fetch" id="parseManualBtn">⇢ 解析粘贴内容</button>
+      <div class="status" id="manualStatus"></div>
+    </div>
+
+    <div class="step-title"><span class="dot">2</span> 人员与岗位</div>
+    <div class="field">
+      <label>员工名称</label>
+      <input type="text" id="empName" list="empList" placeholder="输入姓名，或点击下方人员快选">
+      <datalist id="empList"></datalist>
+      <div class="chips" id="ownerChips"></div>
+    </div>
+    <div class="field">
+      <label>岗位（决定周报输出模板）</label>
+      <select id="position">
+        <option value="ops">运维岗</option>
+        <option value="dev">开发岗</option>
+        <option value="test">测试岗</option>
+        <option value="pm">产品/项目管理岗</option>
+      </select>
+      <div class="hint" id="posHint" style="display:none"></div>
+    </div>
+
+    <div class="step-title"><span class="dot">3</span> 统计周期（周一 ~ 周五）</div>
+    <div class="week-nav">
+      <button id="prevWeek" title="上一周">←</button>
+      <div class="week-label" id="weekLabel"></div>
+      <button id="nextWeek" title="下一周">→</button>
+      <button id="thisWeek" class="wk-today" title="回到本周">回到本周</button>
+    </div>
+
+    <button class="btn btn-primary" id="generateBtn">生成周报</button>
+    <div class="status" id="genStatus"></div>
+
+    <div class="preview">
+      <details>
+        <summary>数据明细预览 <span id="pvCount" style="font-weight:400;color:#9aa1ac"></span></summary>
+        <div class="table-wrap"><table>
+          <thead><tr><th>用途</th><th>项目</th><th>类型</th><th>工作内容</th><th>进度</th><th>要求完成</th><th>实际完成</th></tr></thead>
+          <tbody id="pvBody"></tbody>
+        </table></div>
+      </details>
+    </div>
+  </section>
+
+  <!-- ============ 右侧：结果输出 ============ -->
+  <section class="panel-right">
+    <div class="result-card">
+      <div class="result-head">
+        <h2><span class="bar" style="background:var(--ok)"></span>✅ 本周完成 <span class="meta" id="doneMeta"></span></h2>
+        <button class="copy-btn" id="copyDone">一键复制</button>
+      </div>
+      <div class="result-body empty" id="doneBody">左侧选择人员并点击「生成周报」后，此处按岗位模板输出本周完成内容</div>
+    </div>
+    <div class="result-card">
+      <div class="result-head">
+        <h2><span class="bar" style="background:#e6a23c"></span>📅 下周计划 <span class="meta" id="planMeta"></span></h2>
+        <button class="copy-btn" id="copyPlan">一键复制</button>
+      </div>
+      <div class="result-body empty" id="planBody">下周计划将根据未完成事项（结转项 + 下周到期项）自动生成</div>
+    </div>
+  </section>
+</main>
+
+<div class="footer">
+  <b>使用说明：</b>① 页面打开即载入内置数据快照（离线可用）；② 「在线获取」最新数据：双击同目录「启动本地代理.command」启动本地代理后点击获取（稳定直连，自动Cookie流程），未启动时自动尝试公共代理（成功率低）；③ 备选方式：打开腾讯文档 → 框选表格复制 → 「手动填写」粘贴解析；④ 选择人员 / 岗位 / 周期后生成，一键复制本周完成与下周计划。<br>
+  <b>判定规则：</b>本周完成 = 实际完成时间在所选周内；下周计划 = 下周到期未完成 + 本周进行中结转项。
+</div>
+
+<script>
+'use strict';
+/* ================= 内置数据快照（服务端抓取注入） =================
+   行字段：t=类型(智能表列) c=工作内容 n=备注 o=负责人 p=完成进度 f=是否完成 d=要求完成时间(ms) a=实际完成时间(ms) */
+const SNAPSHOT = {"snapshot_time":"2026-10-10 14:28","sheets":[{"name":"政企APP","rows":[{"t":"需求","c":"企业内购会工单材料输出","o":"何健辉","f":true,"d":1784044800000,"a":1783353600000},{"t":"运维","c":"码厅运维问题排查（订单问题：30）","o":"陈思曦","f":false,"d":1782662400000,"a":1782662400000},{"t":"需求","c":"企业专属内购会 需求 UI修改","n":"修改赠款金额，去掉云电脑，改为云网","o":"何健辉","f":true,"d":1782748800000,"a":1782748800000},{"t":"运维","c":"码厅运维问题排查（订单问题：86 商品配置：4）","o":"陈思曦","f":false,"d":1784044800000,"a":1784217600000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1782748800000,"a":1782748800000},{"t":" 材料","c":"立项可研材料修改","o":"何健辉","f":true,"d":1782835200000,"a":1782921600000},{"t":"需求","c":"关于app内购团单系统需求接口开发","n":"1.接口开发：根据token取用户信息、获取政企助手认证token、查询配置活动上架套餐信息、创建企业内购会二维码、创建企业内购会二维码、企业内购会二维码删除、企业内购会二维码列表分页查、企业内购会团单详情查询、企业内购会团单人员预约登记、企业内购会团队审核失败回退修改、内购团单创码审核列表分页查询、内购团单创码审核数据导出、内购团单创码审核数据详情查询、内购团单创码审核（通过/驳回）、客户经理创码明细列表分页查询、客户经理创码明细数据导出、用户预约登记明细列表分页查询、用户预约登记明细数据导出\n2.表设计创建：企业内购会商品配置表、企业内购会二维码信息表、企业内购会二维码流程表、企业内购会二维码用户预约登记表\n3.配置数据出湖流程：dwa_s_d_zqyypt_zqmd_cust_attr_zqyf\n4.部署前端新工程：purchase-h5\n5.修复测试环境相关bug\n6.增加敏感数据开关和脱敏功能\n7.根据运营平台角色增加接口权限限制","o":"陈泽彬","p":80.0,"d":1782662400000,"a":1784563200000},{"t":"运维","c":"码厅运维问题排查（订单问题：79，商品配置：100）","o":"陈思曦","d":1783267200000,"a":1783267200000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1782921600000,"a":1782921600000},{"t":"运维","c":"填写联通马智伟的”信创资源确认“在线表","o":"陈泽彬","p":100.0,"f":true,"d":1782316800000,"a":1782316800000},{"t":"运维","c":"码厅运维问题排查（订单问题：32）","o":"陈思曦","d":1783353600000,"a":1783353600000},{"t":"需求","c":"根据新要求调整内购会需求页面细节（H5&PC）","o":"黄智彬","d":1784563200000,"a":1784563200000},{"t":"运维","c":"1、客户在途单拦截排查：根据身份证号码查询已存在码厅在途单\n2、客户下单异常排查：根据报错信息查出对应订单绑定集团在数据库不存在影响的","o":"陈泽彬、陈思曦","p":100.0,"d":1782316800000,"a":1782316800000},{"t":"运维","c":"码厅运维问题排查（订单问题：59，商品配置：1）","o":"陈思曦","f":false,"d":1782921600000,"a":1782921600000},{"t":"需求","c":"测试内购会需求","o":"陈思曦","p":70.0,"f":false,"d":1784044800000,"a":1784217600000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1783872000000,"a":1783872000000},{"t":"运维","c":"码厅订单导出无快递号码问题（数据库存在两个同含义的快递单号字段）","n":"已修改","o":"陈泽彬","f":true,"d":1782921600000,"a":1782921600000},{"t":"运维","c":"码厅运维问题排查（黑名单校验异常）","o":"陈思曦","f":false,"d":1782835200000,"a":1782835200000},{"t":"运维","c":"码厅运维问题排查（订单问题：43，商品配置：4）","o":"陈思曦","f":false,"d":1783008000000,"a":1783008000000},{"t":"运维","c":"码厅运维问题排查（订单问题：85，商品配置：1）","o":"陈思曦","f":false,"d":1782835200000,"a":1782835200000},{"t":"运维","c":"码厅运维问题排查（订单问题：24 商品配置：2）","o":"陈思曦","d":1783612800000,"a":1783612800000},{"t":"需求","c":"企业内购会页面接口对接","o":"黄智彬","p":95.0,"d":1783612800000,"a":1783872000000},{"t":"运维","c":"修复商企工作台权限授权表不存在问题和每天未获取用户数据问题","o":"陈泽彬","p":100.0,"f":true,"d":1785859200000,"a":1785859200000},{"t":"需求","c":"微调内购会需求页面","o":"黄智彬","p":100.0,"f":false,"d":1784476800000,"a":1784476800000},{"t":"需求","c":"测试内购会需求","o":"陈思曦","p":10.0,"d":1783872000000,"a":1783872000000},{"t":"运维","c":"码厅运维问题排查（订单问题：21 商品配置：4）","o":"陈思曦","d":1783872000000,"a":1783872000000},{"t":"运维","c":"公众客户进入白屏问题排查","n":"【评估】手机缓存问题，客户换机登陆后正常使用","o":"黄智彬","p":100.0,"f":true,"d":1782230400000,"a":1782230400000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1783526400000,"a":1783526400000},{"t":"需求","c":"企业专属内购会需求原型输出","o":"何健辉","p":100.0,"f":true,"d":1782316800000,"a":1782316800000},{"t":"运维","c":"码厅运维问题排查（订单问题：32，商品配置：2）","o":"陈思曦","f":false,"d":1782748800000,"a":1782748800000},{"t":"运维","c":"码厅运维问题排查（黑名单校验异常）","o":"黄智彬、陈泽彬","d":1782835200000,"a":1782835200000},{"t":"运维","c":"码厅运维问题排查，根据（商品配置：1；订单问题：20）","o":"陈思曦","d":1782403200000,"a":1782403200000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1783612800000,"a":1783612800000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1784044800000,"a":1786464000000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1782662400000,"a":1782662400000},{"t":"需求","c":"关于联通政企APP码厅支持按集团客户开放电脑pc端下单及集团商品批量导入的需求工单材料输出","o":"何健辉","d":1784044800000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1783267200000,"a":1783267200000},{"t":"运维","c":"编写政企APP用户感知运维表","o":"陈思曦","d":1782748800000,"a":1782748800000},{"t":"运维","c":"Fastjson2.0.62及以下版本存在高危的远程代码执行（RCE）漏洞，将代码升级到Fastjson2.0.63","o":"陈泽彬","p":100.0,"f":true,"d":1785859200000,"a":1785859200000},{"t":"运维","c":"安全评估申请表填写（关于内购会新增）","o":"陈泽彬","p":100.0,"f":true,"d":1783958400000,"a":1784044800000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1783353600000,"a":1783353600000},{"t":"运维","c":"按照联通马心远稽核报告补充和修改告警","o":"陈泽彬","f":true,"d":1782748800000,"a":1782921600000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","p":100.0,"f":true,"d":1782316800000,"a":1782316800000},{"t":"运维","c":"联通政企APP广东专区接入长亭waf","n":"配合改动对应dmz配置","o":"陈泽彬","f":true,"d":1783440000000,"a":1783440000000},{"t":"需求","c":"企业专属内购会 需求 UI修改","n":"修改封面图相关的文案","o":"何健辉","p":100.0,"f":true,"d":1782403200000,"a":1782403200000},{"t":"运维","c":" APP数据分类稽核","o":"陈思曦","f":false,"d":1782835200000,"a":1782835200000},{"t":"运维","c":"码厅运维问题排查，根据（商品配置：1；订单问题：35）","o":"陈思曦","d":1782316800000,"a":1782316800000},{"t":"运维","c":"码厅运维问题排查（订单问题：39 商品配置：0）","o":"陈思曦","d":1783958400000,"a":1783958400000},{"t":"运维","c":"编写政企APP软著材料","o":"陈思曦","p":100.0,"d":1785772800000,"a":1786377600000},{"t":"需求","c":"企业专属内购会需求UI 输出","o":"何健辉","p":100.0,"f":true,"d":1782316800000,"a":1782316800000},{"t":"运维","c":"码厅运维问题排查（订单问题：21 商品配置：7）","o":"陈思曦","f":false,"d":1783526400000,"a":1783526400000},{"t":"运维","c":"商企工作台的超10w数据入湖表流程整改","o":"陈泽彬","f":true,"d":1783353600000,"a":1783440000000},{"t":"运维","c":"检查智能监控告警平台的告警配置完整性","o":"陈泽彬","p":100.0,"f":true,"d":1782403200000,"a":1782662400000},{"t":"需求","c":"联通政企APP码厅支持集团商品批量导入接口开发","n":"接口开发：码厅用户绑定归集码批量新增模板导出、码厅用户绑定归集码数据批量导入","o":"陈泽彬","p":100.0,"f":true,"d":1784649600000,"a":1784822400000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","d":1783958400000,"a":1783958400000},{"t":"需求","c":"测试内购会需求","o":"陈思曦","p":100.0,"d":1784476800000,"a":1784736000000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","d":1782403200000,"a":1782403200000},{"t":"需求","c":"企业专属内购会需求原型修改","n":"增加活动审核页、增加二维码管理页、增加相关字段","o":"何健辉","p":100.0,"f":true,"d":1782403200000,"a":1782403200000},{"t":"运维","c":"调整天眼全流程调用链的告警配置","o":"陈泽彬","p":100.0,"f":true,"d":1784476800000,"a":1784476800000},{"t":"运维","c":"协助对原hive、原行云、MRS的数据表存储清单进行梳理和清理工作","o":"陈泽彬","d":1788364800000},{"t":"运维","c":"编写政企APP需求分析说明书","o":"陈思曦","d":1785686400000,"a":1785686400000},{"t":"运维","c":" APP数据分类稽核","o":"陈思曦","d":1782748800000,"a":1782748800000},{"t":"运维","c":"码厅鸿蒙机型（纯血、非纯血）兼容","o":"黄智彬","p":100.0,"f":true,"d":1782144000000,"a":1782144000000},{"t":"需求","c":"关于联通政企APP码厅支持按集团客户开放电脑pc端下单及集团商品批量导入的需求工单材料输出","o":"何健辉","f":false,"d":1784044800000},{"t":"运维","c":"填写联通连佩佩的”运营期-感知探针填写“excel文档","o":"陈泽彬","p":100.0,"f":true,"d":1782403200000,"a":1782662400000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1782835200000,"a":1782835200000},{"t":"需求","c":"企业专属内购会页面开发","o":"黄智彬","p":100.0,"d":1781020800000,"a":1783872000000},{"t":"需求","c":"测试内购会需求","o":"陈思曦","p":20.0,"d":1783958400000,"a":1783958400000},{"t":"运维","c":"需填写并上报3个文件：1.xx系统数据安全应急预案 2.xx系统数据安全应急演练报告 3.《附件1：数据安全应急演练操作手册（演练脚本）》","n":"已提交","o":"陈泽彬","p":100.0,"f":true,"d":1782230400000,"a":1782316800000},{"t":"运维","c":"协助编写营销沙盘功能点","o":"陈思曦","p":100.0,"d":1786291200000,"a":1786291200000},{"t":"需求","c":"测试政企APP责任经理需求","o":"陈思曦","p":100.0,"d":1786291200000,"a":1786291200000},{"t":"运维","c":"码厅运维问题排查（订单问题：26 商品配置：27）","o":"陈思曦","d":1783440000000,"a":1783440000000},{"t":"运维","c":"专项行动每日报平安8点、14点、18点","o":"陈泽彬","p":100.0,"d":1786982400000,"a":1787068800000},{"t":"运维","c":"码厅运维问题排查（订单问题：206商品配置：1）","o":"陈思曦","f":false,"d":1784476800000,"a":1785340800000},{"t":"需求","c":"内购会二期需求评审和原型修改","o":"何健辉","d":1783440000000},{"t":"需求","c":"企业专属内购会需求说明输出","o":"何健辉","f":true,"d":1782748800000,"a":1782748800000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1783008000000,"a":1783008000000},{"t":"需求","c":"码厅增加白名单企业 PC 端下单","o":"何健辉","d":1784044800000},{"t":"运维","c":"政企APP，商企工作台巡检","o":"陈思曦","f":false,"d":1783440000000,"a":1783440000000},{"t":"需求","c":"1、关于“数智惠企（地市极光个性融合）”产品的电子表单流程迭代优化需求\n2、关于政企APP码厅增加在途单校验等需求","o":"黄智彬","d":1779724800000},{"t":"需求","c":"企业专属内购会需求原型修改","n":"1、增加相关备注\n2、修改相关字段内容\n3、增加相关页面","o":"何健辉","f":true,"d":1782748800000,"a":1782748800000},{"t":"运维","c":"数据安全字段校准5月","n":"本月要求完成50%","o":"陈泽彬","f":true,"d":1778774400000,"a":1778774400000}]},{"name":"AI智家助手","rows":[{"t":"材料","c":"助销工单材料检查&上传","o":"何健辉","d":1785427200000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"d":1783526400000,"a":1783526400000},{"t":"开发","c":"AI智家后台系统巡检日志开发","o":"林志桓","p":95.0,"d":1783526400000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":false,"d":1783612800000,"a":1783612800000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":false,"d":1783958400000,"a":1786464000000},{"t":"故障","c":"查询地址资源能力故障，经排查是因悦擎能力提供方故障","o":"林志桓","d":1782316800000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1782835200000,"a":1782835200000},{"t":"开发","c":"AI智家感知提升开发","o":"林志桓","p":95.0,"d":1783526400000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1783440000000,"a":1783440000000},{"t":"需求","c":"AI智家助手巡检日志调整字段","o":"黄智彬","p":100.0,"f":true,"d":1783440000000,"a":1783440000000},{"t":"需求","c":"关于外部接口监控需求接口开发","n":"一共39个能力，已配置能力27个\n未配置能力：查询用户画像、融合群组产品详情查询、近3月ARPU流量查询、查聊笔算等4个能力\n无需配置能力：宽带踢线和强制下线，宽带诊断（其他能力中查询宽带信息、查询光衰、查询在线、查询SN号已包含该数据）、生成海报、订单转派等5个能力\n无法配置能力：查询汇总积分、查询积分明细、查询积分前10名等3个能力","o":"林志桓","p":80.0,"f":false,"d":1779724800000},{"t":"验收","c":"验收材料修改","o":"何健辉","f":true,"d":1783440000000,"a":1783440000000},{"t":"材料","c":"科创项目任务书绩效表","o":"何健辉","f":true,"d":1783440000000,"a":1783440000000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1783353600000,"a":1783353600000},{"t":"需求","c":"AI升级原型","o":"何健辉","d":1784131200000},{"t":"需求","c":"配合改造智家助手信创改造","o":"陈泽彬","p":90.0,"f":false,"d":1785081600000,"a":1786896000000},{"t":"运维","c":"统计海报数据","o":"林志桓","p":100.0,"f":true,"d":1782316800000,"a":1782316800000},{"t":"材料","c":"感知提升 6 月分析","o":"何健辉","f":true,"d":1782921600000,"a":1782835200000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1782403200000,"a":1782403200000},{"t":"材料","c":"立项材料OA 系统填写","o":"何健辉","f":true,"d":1782921600000,"a":1783008000000},{"t":"运维","c":"AI智家助手模型切换生产验证","o":"陈思曦","p":100.0,"d":1783008000000,"a":1783008000000},{"t":"材料","c":"编写智家助手海报功能运营分析表","o":"陈思曦","p":100.0,"f":true,"d":1782316800000,"a":1782316800000},{"t":"立项","c":"研发项目费用预算表填写","o":"何健辉","p":100.0,"f":true,"d":1782403200000,"a":1782403200000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1782748800000,"a":1782748800000},{"t":"需求","c":"AI智家后台系统巡检日志页面字段改造","o":"黄智彬","p":100.0,"f":true,"d":1782921600000,"a":1782921600000},{"t":" 需求","c":"感知提升埋点需求梳理","o":"何健辉","p":100.0,"f":true,"d":1782403200000,"a":1782403200000},{"t":"运维","c":"编写AI智家助手用户感知运维表","o":"陈思曦","p":100.0,"d":1782748800000,"a":1782748800000},{"t":"需求","c":"测试AI智家助手巡检日志功能","o":"陈思曦","p":100.0,"f":true,"d":1783526400000,"a":1783526400000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1782921600000,"a":1782921600000},{"t":"需求","c":"测试AI智家助手巡检日志功能","o":"陈思曦","p":50.0,"d":1783440000000,"a":1783440000000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1783267200000,"a":1783267200000},{"t":"运维","c":"排查生产环境海报上传速度慢问题","o":"陈泽彬","p":100.0,"f":false,"d":1786982400000,"a":1786982400000},{"t":"需求","c":"关于AI智家助手感知提升增加埋点需求测试","o":"陈思曦","p":80.0,"f":false,"d":1783612800000,"a":1783612800000},{"t":"运维","c":"AI智家助手商机功能演示","o":"陈思曦","p":100.0,"d":1783353600000,"a":1783353600000},{"t":"运维","c":"AI智家助手产品问题闭环清单编写","o":"陈思曦","p":100.0,"f":true,"d":1782921600000,"a":1782921600000},{"t":"需求","c":"测试AI智家助手信创环境功能","o":"陈思曦","p":80.0,"d":1786377600000,"a":1786636800000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1782316800000,"a":1782316800000},{"t":"材料","c":"流程治理效益分析","o":"何健辉","p":100.0,"f":true,"d":1782576000000,"a":1782576000000},{"t":"运维","c":"AI智家模型切换测试","o":"陈思曦","p":100.0,"d":1782748800000,"a":1782748800000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1782662400000,"a":1782662400000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1783008000000,"a":1783008000000},{"t":"运维","c":"AI智家助手巡检","o":"陈思曦","p":100.0,"f":true,"d":1783872000000,"a":1783872000000},{"t":"需求","c":"关于AI智家助手感知提升增加埋点需求","o":"黄智彬","p":80.0,"d":1783612800000,"a":1783612800000},{"t":"材料","c":"广东联通助销skill智能化改造方案汇报材料","o":"何健辉","f":true,"d":1782921600000,"a":1782835200000},{"t":"运维","c":"AI智家商机本优化图片上传","o":"黄智彬","d":1783353600000}]},{"name":"AI政企助手","rows":[{"t":"验收","c":"验收材料修改","o":"何健辉","f":true,"d":1783440000000,"a":1783440000000},{"t":"运维","c":"推广使用"},{"t":"运维","c":"编写AI政企助手软著材料","o":"陈思曦","f":false,"d":1786291200000,"a":1786291200000},{"f":true},{"t":"验收","c":"验收材料修改","o":"何健辉","f":false,"d":1783440000000,"a":1783440000000},{"t":"需求","c":"广东AI 政企助手一页纸推广材料","o":"何健辉","f":true,"d":1782316800000,"a":1782316800000},{"t":"运维","c":"AI政企助手能力统计，新增用户","o":"陈思曦","f":false,"d":1782835200000,"a":1782835200000}]},{"name":"数字员工","rows":[{"t":"运维","c":"数字化监控平台监控告警优化（配上静默时间）","o":"吕守淼","p":100.0,"d":1784563200000,"a":1784563200000},{"t":"需求","c":"舆情二期需求上线前事项确认与上线配合","o":"吕守淼","p":100.0,"d":1784649600000,"a":1784649600000},{"t":"立项","c":"立项相关材料","o":"何健辉"},{"t":"运维","c":"天眼监控：RDS部分监控无数据问题排查与解决","o":"吕守淼","p":100.0,"d":1783958400000,"a":1783958400000},{"t":"需求","c":"中山需求：畅越违约金查询需求场景了解与开发前评估","o":"吕守淼","p":100.0,"d":1784217600000,"a":1784217600000},{"t":"运维","c":"编写数字员工需求分析说明书","o":"陈思曦","p":100.0,"d":1785081600000,"a":1785168000000},{"t":"运维","c":"数字员工应急桌面演练达到40%","o":"吕守淼","p":100.0,"d":1788105600000,"a":1785772800000},{"t":"需求","c":"测试舆情功能优化需求（采集帖子时间改为近期）","o":"陈思曦","p":20.0,"d":1783008000000,"a":1783008000000},{"t":"需求","c":"群通报信息分类","n":"群通报信息分类","o":"吕守淼","p":100.0,"f":true},{"t":"需求","c":"中山rpa：融合业务新-终端全家福子场景开发","n":"暂不上线","o":"吕守淼","p":100.0,"f":true,"d":1782403200000,"a":1782230400000},{"t":"需求","c":"使用状况梳理","n":"数字员工菜单梳理","o":"吕守淼","p":100.0,"f":true},{"t":"需求","c":"已有员工进行批量标签更新","n":"待巨擘通知","o":"吕守淼"},{"t":"需求","c":"rpa融合业务新：资料录入时宽带号为空问题排查与解决","o":"吕守淼","p":100.0,"d":1784476800000,"a":1784476800000},{"t":"运维","c":"数字员工安全评估表填写","o":"吕守淼","d":1785945600000},{"t":"运维","c":"数字员工证书更换","o":"吕守淼","p":100.0,"a":1783958400000},{"t":"运维","c":"智家rpa：融合业务新、固网开户项目选址脚本优化去除NAN值，装机地址优化。","o":"吕守淼","p":100.0,"d":1783267200000,"a":1783267200000},{"t":"运维","c":"数据库空间清理","o":"吕守淼","p":100.0,"a":1786291200000},{"t":"运维","c":"智家开户地址匹配不上问题排查","o":"吕守淼","p":100.0,"d":1784736000000,"a":1784736000000},{"t":"运维","c":"数字员工调用链监控接入","o":"吕守淼"},{"t":"运维","c":"编写数字员工舆情二期需求分析说明书","o":"陈思曦","p":100.0,"f":true,"d":1783440000000,"a":1783440000000},{"t":"立项","c":"应急预案编写","o":"吕守淼","p":100.0,"f":true,"d":1782403200000,"a":1782316800000},{"t":"需求","c":"舆情二期需求","o":"陈思曦","p":70.0,"d":1784044800000,"a":1784217600000},{"t":"需求","c":"舆情模块二期工单输出","o":"何健辉","f":true,"d":1783612800000,"a":1783612800000},{"t":"需求","c":"数据库表废弃表梳理","n":"数字员工数据库表梳理","o":"吕守淼","p":100.0,"f":true},{"t":"需求","c":"数字员工超市","o":"吕守淼","d":1787846400000},{"t":"运维","c":"漏洞分析","o":"吕守淼"},{"t":"需求","c":"舆情模块二期","n":"1、机器人分组中，成员管理弹窗添加联系人名字显示。\n2、采集任务添加开始时间，支持筛选指定时间内的帖子。\n3、浏览器插件支持微博平台认证信息获取，客户端新增微博平台的采集、跟踪、顶贴、疏导功能。\n4、采集任务添加支持微博平台的发起任务采集，采集结果管理支持微博平台分类、顶贴、疏导。\n5、监控大盘、任务统计报表支持微博平台数据显示。","o":"吕守淼","p":80.0,"d":1785427200000},{"t":"运维","c":"数字员工平台后端漏洞修复","o":"吕守淼"},{"t":"需求","c":"测试舆情功能优化需求（采集帖子时间改为近期）","o":"陈思曦","p":60.0,"f":false,"d":1783267200000,"a":1783267200000},{"t":"需求","c":"关于数字员工运营平台AI舆情平台监控举报能力优化需求","o":"陈思曦"},{"t":"需求","c":"收单调度配置维护","n":"工单10天，后续又花了2天","o":"吕守淼","p":100.0,"f":true,"a":1781020800000},{"t":"运维","c":"数字员工数据库磁盘使用率过高问题处理","o":"吕守淼"},{"t":"运维","c":"填写容器资源申请表","o":"吕守淼"},{"t":"运维","c":"生产应急演练","o":"吕守淼","p":100.0,"f":true,"a":1779811200000},{"t":"运维","c":"智家RPA选址优化，确认为原地址的情况下勾选不选地址","o":"吕守淼","p":100.0,"f":true,"d":1782316800000,"a":1782316800000},{"t":"需求","c":"舆情二期需求","o":"陈思曦","p":60.0,"f":false,"d":1783958400000,"a":1783958400000},{"t":"需求","c":"数据库表二次梳理","o":"吕守淼","p":100.0,"d":1784476800000,"a":1784476800000},{"t":"运维","c":"数字员工系统全层级信息填写","o":"吕守淼","p":100.0,"a":1786550400000},{"t":"需求","c":"中山需求：畅越违约金查询需求场景开发","o":"吕守淼","p":90.0},{"t":"运维","c":"清理minio占用空间多大的部分文件，腾出多余空间","o":"吕守淼"},{"t":"运维","c":"云桌面到期处理、开户数据处理、授权码处理","n":"每天","o":"吕守淼"},{"t":"运维","c":"智家rpa商户选址优化，个人和集团资料录入时勾选商户","o":"吕守淼","d":1785686400000,"a":1785686400000},{"t":"运维","c":"畅越A低消、宝盒1.0宽带侧合约权益取消","o":"吕守淼","p":100.0,"f":true,"d":1787846400000,"a":1787846400000},{"t":"运维","c":"智家rpa商户选址优化，选址时不勾选商户，资料录入时勾选","o":"吕守淼","p":80.0,"d":1785168000000,"a":1785168000000},{"t":"需求","c":"舆情二期上线失败排查原因与优化","o":"吕守淼","p":100.0,"d":1784822400000,"a":1784822400000},{"t":"需求","c":"中山需求：畅越违约金查询需求开发","o":"吕守淼","p":100.0},{"t":"需求","c":"舆情二期需求","o":"陈思曦","p":90.0,"f":false,"d":1784476800000,"a":1784736000000},{"t":"需求","c":"RPA撤改单","o":"吕守淼"},{"t":"运维","c":"分子公司生产系统在用技术栈情况调研表填写","o":"吕守淼","p":100.0},{"t":"运维","c":"数字员工应急桌面演练达到20%","o":"吕守淼","p":100.0,"d":1785427200000,"a":1784649600000},{"t":"需求","c":"中山rpa：融合业务新-生意通融合开户子场景开发","n":"暂不上线","o":"吕守淼","p":5.0,"d":1784131200000},{"t":"需求","c":"关于广东数智模型能力集-悦影数字员工新增智家全家福（终端版）的需求工单输出","o":"何健辉","f":true,"d":1783612800000,"a":1783612800000},{"t":"运维","c":"运营日报：企业微信消息发布成功问题排查与解决","o":"吕守淼","p":100.0,"a":1784044800000},{"t":"运维","c":"融合业务新：资料录入宽带号为空问题排查与解决","o":"吕守淼","p":100.0,"d":1784217600000,"a":1783612800000},{"t":"需求","c":"参加数字员工需求会议","o":"陈思曦","d":1782662400000,"a":1782662400000},{"t":"运维","c":"编写数字员工舆情二期需求分析说明书","o":"陈思曦","p":100.0,"f":true,"d":1783353600000,"a":1783353600000},{"t":"需求","c":"关于融合业务新和固网开户rpa项目首页验证中支持中台订单号验证需求\n关于数字员工运营平台菜单及字段优化需求","o":"何健辉"},{"t":"运维","c":"业务安装机器人运行不了项目问题排查解决","o":"吕守淼","d":1784131200000,"a":1784131200000},{"t":"需求","c":"舆情三期需求","o":"吕守淼","p":80.0}]},{"name":"其他项目","rows":[{"t":"开发","c":"全客二研关于热线宽带商机回捞数据接入全客平台动态客户群的需求20260528","n":"调试验证客户群文件数据推送","o":"林志桓","f":false,"d":1782316800000},{"t":"运维","c":"根据验收要求配置接口相关告警92个","o":"林志桓","d":1782748800000,"a":1782748800000},{"t":"运维","c":"编写打标文件处理流程优化方案","o":"林志桓","d":1783440000000,"a":1783440000000},{"t":"开发","c":"动态客户群口径修改","o":"林志桓","d":1784131200000},{"t":"标书","c":"阳江铁塔项目","o":"何健辉","d":1784131200000,"a":1784131200000}]}]};
+
+/* ================= 全局状态 ================= */
+const state = {
+  sheets: [],          // [{name, rows:[canonRow]}]
+  source: 'none',
+  info: '',
+  weekMonday: null,
+  copy: { done: '', plan: '' },
+  posDirty: false,
+  lastJump: null,
+};
+const $ = id => document.getElementById(id);
+const DAY = 86400000;
+
+/* ================= 快照载入 ================= */
+function loadSnapshot(){
+  const sheets = (SNAPSHOT.sheets||[]).map(sh => ({
+    name: sh.name,
+    rows: (sh.rows||[]).map(r => canon(r.t, r.c, r.n, r.o, r.p, r.f, r.d, r.a))
+  }));
+  state.sheets = sheets; state.source = 'snapshot';
+  state.info = `内置快照 ${SNAPSHOT.snapshot_time}`;
+  $('srcBadge').textContent = `数据源：内置快照（${SNAPSHOT.snapshot_time}，${sheets.length}表 / ${totalRows()}条）`;
+}
+function canon(type, content, note, owner, progress, finished, due, actual){
+  return { type: str(type), content: str(content), note: str(note), owner: str(owner),
+    progress: num(progress), finished: bool(finished), due: num(due), actual: num(actual) };
+}
+function str(v){ return (v==null||v===true||v===false) ? '' : String(v).trim(); }
+function num(v){ if(v==null||v==='')return null; const n=+v; return isNaN(n)?null:n; }
+function bool(v){ if(v===true||v===false)return v; const s=String(v).trim().toLowerCase();
+  if(['true','是','已完成','1','y','yes','✓'].includes(s))return true;
+  if(['false','否','未完成','0','n','no'].includes(s))return false; return null; }
+function totalRows(){ return state.sheets.reduce((s,x)=>s+x.rows.length,0); }
+
+/* ================= 日期工具 ================= */
+function mondayOf(d){ const x=new Date(d); x.setDate(x.getDate()-((x.getDay()+6)%7)); x.setHours(0,0,0,0); return x; }
+function fmtMD(ms){ const d=new Date(ms); return `${d.getMonth()+1}.${String(d.getDate()).padStart(2,'0')}`; }
+function fmtYMD(ms){ const d=new Date(ms); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function dayIdx(ms){ return Math.floor((ms - state.weekMonday.getTime())/DAY); }
+function parseDateVal(v){
+  if(v==null||v==='')return null;
+  const s=String(v).trim();
+  if(/^\d{13}$/.test(s))return +s;
+  if(/^\d{10}$/.test(s))return +s*1000;
+  let m=s.match(/(\d{4})[-\/.年](\d{1,2})[-\/.月](\d{1,2})/);
+  if(m) return new Date(+m[1],+m[2]-1,+m[3]).getTime();
+  m=s.match(/^(\d{1,2})[-\/.月](\d{1,2})/);
+  if(m) return new Date(new Date().getFullYear(),+m[1]-1,+m[2]).getTime();
+  return null;
+}
+
+/* ================= 数据范围统计 ================= */
+function dataRange(){
+  let min=null,max=null;
+  state.sheets.forEach(sh=>sh.rows.forEach(r=>{ if(r.actual){min=min==null?r.actual:Math.min(min,r.actual);max=max==null?r.actual:Math.max(max,r.actual);} }));
+  return min==null?null:[min,max];
+}
+
+/* ================= 人员 ================= */
+function ownerSet(){
+  const set=new Set();
+  state.sheets.forEach(sh=>sh.rows.forEach(r=>{
+    String(r.owner||'').split(/[、,，/;；\s]+/).forEach(s=>{ if(s.trim())set.add(s.trim()); });
+  }));
+  return [...set].sort();
+}
+function matchOwner(owner,q){
+  if(!q)return false;
+  const segs=String(owner||'').split(/[、,，/;；\s]+/).map(s=>s.trim()).filter(Boolean);
+  return segs.some(s=> s===q || s.includes(q) || q.includes(s));
+}
+function renderOwners(){
+  const owners=ownerSet();
+  $('empList').innerHTML = owners.map(o=>`<option value="${o}">`).join('');
+  $('ownerChips').innerHTML = owners.map(o=>{
+    const act = $('empName').value.trim()===o ? ' active':'';
+    return `<span class="chip${act}" data-name="${o}">${o}</span>`;
+  }).join('');
+}
+
+/* ================= 周 ================= */
+function renderWeek(){
+  const m=state.weekMonday.getTime(), f=m+4*DAY;
+  const thisMon=mondayOf(new Date()).getTime();
+  const diff=Math.round((m-thisMon)/(7*DAY));
+  const rel = diff===0?'本周':diff===1?'下周':diff===-1?'上周':diff===2?'下下周':diff===-2?'上上周':'';
+  $('weekLabel').innerHTML = `<b>${fmtMD(m)} ~ ${fmtMD(f)}</b>（周一~周五）${rel?`<span class="rel">${rel}</span>`:''}`;
+}
+function shiftWeek(n){ state.weekMonday.setDate(state.weekMonday.getDate()+7*n); renderWeek(); }
+
+/* ================= 过滤：本周完成 / 下周计划 ================= */
+function collect(person){
+  const done=[], plan=[];
+  state.sheets.forEach(sh=>sh.rows.forEach(r=>{
+    if(!matchOwner(r.owner,person))return;
+    const a=r.actual!=null?dayIdx(r.actual):null;
+    const d=r.due!=null?dayIdx(r.due):null;
+    const isDone = r.finished===true || (r.progress!=null&&r.progress>=100);
+    const it={...r,sheet:sh.name,isDone};
+    if(a!=null&&a>=0&&a<=4) done.push(it);                          // 本周实际有工作记录
+    if(!isDone){
+      if(d!=null&&d>=7&&d<=11) plan.push(it);                        // 下周到期未完成
+      else if(a!=null&&a>=0&&a<=4) plan.push({...it,carry:true});    // 本周进行中 → 结转
+    }
+  }));
+  const seen=new Set();
+  const dd=done.filter(it=>{const k=it.sheet+'|'+it.content;if(seen.has(k))return false;seen.add(k);return true;});
+  const seen2=new Set();
+  const pp=plan.filter(it=>{const k=it.sheet+'|'+it.content;if(seen2.has(k))return false;seen2.add(k);return true;});
+  return {done:dd,plan:pp};
+}
+
+/* ================= 岗位模板 ================= */
+const POS = {
+  ops:{label:'运维岗',cats:[
+    ['群或者邮件支撑问题处理',/群|邮件|支撑|答疑/],
+    ['沃工单',/工单/],
+    ['在线咨询',/在线咨询|线上咨询|咨询/],
+    ['全客平台运营日报、周报、月报统计类',/日报|周报|月报|报平安|统计/],
+    ['日常巡检',/巡检/],
+    ['日常监控、告警处理',/监控|告警|报警/],
+    ['故障应急救援',/故障|应急|救援|演练|突发|修复|排查|异常|不存在|缓慢/],
+    ['数据处理，报表重跑等',/报表|重跑|跑数|数据/],
+    ['值班',/值班|值守/],
+    ['其他事项',null],
+  ]},
+  dev:{label:'开发岗',cats:[
+    ['代码提交量',/代码|提交|commit|git/i],
+    ['功能开发',/需求|功能|开发|改造|联调|接口|上线|部署|实现|新增|优化|配置/],
+    ['bug修复或者优化',/bug|缺陷|修复|问题|异常|排查|故障|缓慢/i],
+    ['其他临时安排任务',null],
+  ]},
+  test:{label:'测试岗',cats:[
+    ['测试用例',/用例|测试|验证|回归|自测|功能点/],
+    ['测试bug数',/bug|缺陷|问题|排查/i],
+    ['测试文档报告输出',/报告|文档|材料|说明书|软著|总结|方案/],
+    ['其他文档类',null],
+  ]},
+  pm:{label:'产品/项目管理岗',cats:[
+    ['本周已输出方案',null],['本周输出中方案',null],
+    ['项目进度跟进、团队协作协调、任务拆解落地',/会议|跟进|协调|排期|评审|组织|配合|推动|拆解|统筹/],
+    ['客户/业务对接',/客户|对接|电话|沟通|业务|推广|谈判/],
+    ['其他文档类',null],
+  ]},
+};
+function categorize(items,posKey){
+  const cats=POS[posKey].cats, buckets=cats.map(()=>[]);
+  items.forEach(it=>{
+    const text=`${it.type||''} ${it.content||''}`;
+    if(posKey==='pm'){
+      if(/立项|验收|专利|软著|标书|一页纸|可研|汇报材料/.test(text)) buckets[4].push(it);
+      else if(/方案|材料|文档|输出|编写|ppt/i.test(text)) (it.isDone?buckets[0]:buckets[1]).push(it);
+      else if(cats[2][1].test(text)) buckets[2].push(it);
+      else if(cats[3][1].test(text)) buckets[3].push(it);
+      else buckets[4].push(it);
+      return;
+    }
+    for(let i=0;i<cats.length;i++){
+      if(cats[i][1]===null||cats[i][1].test(text)){ buckets[i].push(it); break; }
+    }
+  });
+  return buckets;
+}
+function itemText(it,isPlan){
+  let s=it.content||'（无内容描述）';
+  if(it.note) s+=`（${it.note}）`;
+  if(state.sheets.length>1 && it.sheet && !s.includes(it.sheet)) s=`【${it.sheet}】${s}`;
+  const p=it.progress;
+  if(!isPlan){
+    if(it.isDone) return s;
+    return p!=null?`${s}（进度${Math.round(p)}%）`:`${s}（进行中）`;
+  }
+  if(it.carry) return `${s}（结转，当前进度${p!=null?Math.round(p)+'%':'—'}）`;
+  if(it.due!=null) return `${s}（计划${fmtMD(it.due)}完成）`;
+  return s;
+}
+function renderSection(items,posKey,isPlan){
+  const buckets=categorize(items,posKey);
+  const cats=POS[posKey].cats;
+  const planLabel={pm:['下周计划输出方案','输出中方案（继续推进）']};
+  return cats.map((cat,i)=>{
+    let label=cat[0];
+    if(isPlan&&planLabel[posKey]&&planLabel[posKey][i]!==undefined) label=planLabel[posKey][i];
+    const list=buckets[i].map(it=>itemText(it,isPlan)).join('；');
+    return `${i+1}.${label}：${list||'无'}`;
+  }).join('\n');
+}
+
+/* ================= 生成 ================= */
+function guessPos(items){
+  const cnt={};
+  items.forEach(it=>{ if(it.type)cnt[it.type]=(cnt[it.type]||0)+1; });
+  const top=Object.entries(cnt).sort((a,b)=>b[1]-a[1])[0];
+  if(!top)return null;
+  const t=top[0];
+  if(/运维/.test(t))return 'ops';
+  if(/需求/.test(t))return 'dev';
+  if(/材料|验收|标书/.test(t))return 'pm';
+  return null;
+}
+function latestWeek(person){
+  let max=null;
+  state.sheets.forEach(sh=>sh.rows.forEach(r=>{
+    if(!matchOwner(r.owner,person))return;
+    if(r.actual&&(max==null||r.actual>max))max=r.actual;
+  }));
+  return max==null?null:mondayOf(new Date(max));
+}
+function generate(){
+  const person=$('empName').value.trim();
+  const st=$('genStatus');
+  if(!state.sheets.length){ st.innerHTML='<span class="err">✗ 请先载入数据（在线获取 / 手动填写）</span>'; return; }
+  if(!person){ st.innerHTML='<span class="err">✗ 请输入员工名称（可点击人员快选）</span>'; return; }
+  if(!ownerSet().some(o=>matchOwner(o,person))){
+    st.innerHTML=`<span class="err">✗ 未找到「${person}」的记录，请检查姓名。已知人员：${ownerSet().join('、')}</span>`;
+    return;
+  }
+  const {done,plan}=collect(person);
+  // 岗位自动建议
+  if(!state.posDirty){
+    const g=guessPos(done);
+    if(g&&g!==$('position').value){
+      $('position').value=g;
+      $('posHint').style.display='block';
+      $('posHint').innerHTML=`已按数据工作类型自动匹配岗位：<b>${POS[g].label}</b>（可手动调整）`;
+    }
+  }
+  const posKey=$('position').value;
+  // 空数据 → 提供跳转
+  if(!done.length&&!plan.length){
+    const lw=latestWeek(person);
+    state.lastJump=lw;
+    let msg=`<span class="warn">⚠ 所选周期（${fmtMD(state.weekMonday.getTime())}~${fmtMD(state.weekMonday.getTime()+4*DAY)}）内「${person}」暂无工作记录。</span>`;
+    if(lw) msg+=`<br><button class="btn-jump" id="jumpBtn">跳转到最近有数据的一周（${fmtMD(lw.getTime())}~${fmtMD(lw.getTime()+4*DAY)}）→</button>`;
+    st.innerHTML=msg;
+    const jb=$('jumpBtn'); if(jb)jb.onclick=()=>{ state.weekMonday=new Date(lw.getTime()); renderWeek(); generate(); };
+    $('doneBody').className='result-body empty'; $('doneBody').textContent='该周期内暂无工作记录';
+    $('planBody').className='result-body empty'; $('planBody').textContent='该周期内暂无工作记录';
+    $('doneMeta').textContent=''; $('planMeta').textContent=''; $('pvBody').innerHTML=''; $('pvCount').textContent='';
+    state.copy={done:'',plan:''};
+    return;
+  }
+  st.innerHTML='';
+  const doneTxt=renderSection(done,posKey,false);
+  const planTxt=renderSection(plan,posKey,true);
+  state.copy={done:doneTxt,plan:planTxt};
+  const fin=done.filter(i=>i.isDone).length, ing=done.length-fin;
+  $('doneBody').className='result-body'; $('doneBody').textContent=doneTxt;
+  $('planBody').className='result-body'; $('planBody').textContent=planTxt;
+  $('doneMeta').textContent=`共${done.length}项（已完成${fin} · 进行中${ing}）`;
+  $('planMeta').textContent=`共${plan.length}项（结转${plan.filter(i=>i.carry).length} · 新计划${plan.length-plan.filter(i=>i.carry).length}）`;
+  renderPreview(done,plan);
+}
+
+/* ================= 预览表 ================= */
+function renderPreview(done,plan){
+  const rows=[
+    ...done.map(i=>[...[i],'done']),...plan.map(i=>[...[i],'plan'])
+  ];
+  $('pvCount').textContent=`（本周完成 ${done.length} 条 / 下周计划 ${plan.length} 条）`;
+  $('pvBody').innerHTML=rows.map(([it,tag])=>`<tr>
+    <td><span class="tag ${tag}">${tag==='done'?'本周完成':'下周计划'}</span></td>
+    <td>${esc(it.sheet)}</td><td>${esc(it.type)}</td>
+    <td class="wrap">${esc(it.content)}${it.note?`（${esc(it.note)}）`:''}</td>
+    <td>${it.progress!=null?Math.round(it.progress)+'%':'—'}</td>
+    <td>${it.due!=null?fmtYMD(it.due):'—'}</td>
+    <td>${it.actual!=null?fmtYMD(it.actual):'—'}</td>
+  </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:#a6adba">无记录</td></tr>';
+}
+function esc(s){ return String(s||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+
+/* ================= 复制 ================= */
+async function copyText(text,btn){
+  if(!text){ btn.textContent='暂无内容'; setTimeout(()=>btn.textContent='一键复制',1200); return; }
+  let ok=false;
+  try{ await navigator.clipboard.writeText(text); ok=true; }
+  catch(e){
+    try{
+      const ta=document.createElement('textarea');
+      ta.value=text; ta.style.cssText='position:fixed;opacity:0';
+      document.body.appendChild(ta); ta.select();
+      ok=document.execCommand('copy'); document.body.removeChild(ta);
+    }catch(e2){ ok=false; }
+  }
+  btn.classList.add('copied'); btn.textContent=ok?'✓ 已复制':'复制失败';
+  setTimeout(()=>{ btn.classList.remove('copied'); btn.textContent='一键复制'; },1600);
+}
+
+/* ================= 手动填写解析 ================= */
+const COL_ALIAS=[
+  ['type',/智能表列|类型|分类|类别|工作类型|板块/],
+  ['content',/工作内容|内容|事项|工作事项|任务|描述|详情|工作/],
+  ['owner',/负责人|姓名|人员|员工|执行人|担当|成员/],
+  ['note',/备注|说明/],
+  ['progress',/完成进度|进度|完成度|百分比/],
+  ['due',/要求完成|计划完成|预计完成|截止|预期/],
+  ['actual',/实际完成|实际进度|完成时间/],
+  ['finished',/是否完成|是否已完成|状态/],
+];
+function detectDelim(lines){
+  let tab=0,pipe=0,comma=0;
+  lines.slice(0,5).forEach(l=>{ tab+=(l.match(/\t/g)||[]).length; pipe+=(l.match(/\|/g)||[]).length; comma+=(l.match(/[,，]/g)||[]).length; });
+  if(tab>0)return '\t';
+  if(pipe>0)return '|';
+  if(comma>0)return ',';
+  return /\s{2,}/.test(lines[0]||'')?'  ':'\t';
+}
+function splitLine(line,d){
+  if(d==='\t')return line.split('\t');
+  if(d==='|')return line.split('|').map(s=>s.trim()).filter((s,i,a)=>!(s===''&&(i===0||i===a.length-1)));
+  if(d==='  ')return line.trim().split(/\s{2,}/);
+  // CSV（简化处理引号）
+  const out=[];let cur='',q=false;
+  for(const ch of line){
+    if(ch==='"')q=!q;
+    else if((ch===','||ch==='，')&&!q){out.push(cur);cur='';}
+    else cur+=ch;
+  }
+  out.push(cur);
+  return out;
+}
+function parsePasted(text){
+  const lines=text.replace(/\r/g,'').split('\n').filter(l=>l.trim());
+  if(lines.length<2)return {err:'内容行数不足（至少需要表头 + 1 行数据）'};
+  const d=detectDelim(lines);
+  const grid=lines.filter(l=>!/^\s*\|?[\s:|\-—]+\|?\s*$/.test(l)).map(l=>splitLine(l,d));
+  if(grid.length<2)return {err:'未识别到有效表格行'};
+  const header=grid[0].map(h=>h.trim());
+  const colMap={};
+  header.forEach((h,i)=>{
+    for(const [key,re] of COL_ALIAS){
+      if(colMap[key]===undefined&&re.test(h)){colMap[key]=i;break;}
+    }
+  });
+  if(colMap.content===undefined){
+    // 回退：取平均文本最长的列作为工作内容
+    let best=0,bestLen=-1;
+    for(let c=0;c<header.length;c++){
+      const len=grid.slice(1).reduce((s,r)=>s+((r[c]||'').length),0)/(grid.length-1);
+      if(len>bestLen){bestLen=len;best=c;}
+    }
+    colMap.content=best;
+  }
+  const rows=grid.slice(1).map(r=>{
+    const g=k=>r[colMap[k]]!=null?String(r[colMap[k]]).trim():'';
+    let p=num(g('progress').replace('%',''));
+    if(p!=null&&p<=1&&/%/.test(g('progress'))===false&&String(g('progress')).includes('.'))p=p*100;
+    return canon(g('type'),g('content'),g('note'),g('owner'),p,bool(g('finished')),parseDateVal(g('due')),parseDateVal(g('actual')));
+  }).filter(r=>r.content||r.owner);
+  if(!rows.length)return {err:'未解析出有效数据行'};
+  return {name:'手动粘贴',rows};
+}
+
+/* ================= 在线获取 ================= */
+const PROXIES=[
+  {name:'代理通道1(allorigins)',wrap:u=>`https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`},
+  {name:'代理通道2(codetabs)',wrap:u=>`https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`},
+  {name:'代理通道3(corsproxy)',wrap:u=>`https://corsproxy.io/?url=${encodeURIComponent(u)}`},
+  {name:'代理通道4(allorigins-get)',wrap:u=>`https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,unwrap:t=>{try{const j=JSON.parse(t);return j.contents||t;}catch(e){return t;}}},
+];
+function parseDocUrl(url){
+  const m=String(url).match(/docs\.qq\.com\/(?:smartsheet|sheet|dop-api\/opendoc|docx|slide)\/([A-Za-z0-9]+)/);
+  if(!m)return null;
+  let tab=null;
+  try{ tab=new URL(url).searchParams.get('tab'); }catch(e){}
+  return {id:m[1],tab};
+}
+function extractSheet(json,tab){
+  const iat=json?.clientVars?.collab_client_vars?.initialAttributedText?.text?.[0];
+  if(!iat||!iat.smartsheet)return null;
+  const sm=JSON.parse(iat.smartsheet);
+  let meta=null,recs=null;
+  (sm[0]||[]).forEach(b=>{ if(b&&b.t===3005)meta=b; if(b&&b.t===3028)recs=b; });
+  if(!meta)return null;
+  let name=tab;
+  try{ for(const s of JSON.parse(iat.workbook||'[]'))if(s.id===tab)name=s.name; }catch(e){}
+  const fields=(meta.c?.['3']?.['3'])||{};
+  const fname={};Object.entries(fields).forEach(([fid,f])=>{fname[fid]=f['30']||'';});
+  const records=(recs?.c?.['2']?.['1'])||{};
+  const rows=[];
+  Object.entries(records).forEach(([,rv])=>{
+    const cells=rv['1']||{};
+    const row={};
+    Object.entries(cells).forEach(([fid,cv])=>{
+      const nm=fname[fid];if(!nm)return;
+      if(typeof cv==='object'&&cv!==null){
+        if(cv['1']!==undefined)row[nm]=(typeof cv['1']==='string')?cv['1']:cv['1'].map(s=>s['2']||'').join('');
+        else if(cv['3']!==undefined)row[nm]=cv['3'];
+        else if(cv['4']!==undefined)row[nm]=+cv['4'];
+        else if(cv['28']!==undefined)row[nm]=(typeof cv['28']==='object')?cv['28']['1']:cv['28'];
+      }else row[nm]=cv;
+    });
+    rows.push(canon(row['智能表列'],row['工作内容'],row['备注'],row['负责人'],row['完成进度'],row['是否完成'],row['要求完成时间'],row['实际完成时间']));
+  });
+  const workbook=(()=>{try{return JSON.parse(iat.workbook||'[]');}catch(e){return [];}})();
+  return {name,rows,workbook};
+}
+async function fetchWithTimeout(url,ms){
+  const ctl=new AbortController();
+  const t=setTimeout(()=>ctl.abort(),ms);
+  try{ const r=await fetch(url,{signal:ctl.signal}); return {status:r.status,text:await r.text()}; }
+  finally{ clearTimeout(t); }
+}
+async function fetchOnline(){
+  const info=parseDocUrl($('docUrl').value.trim());
+  const log=$('fetchLog'),st=$('fetchStatus'),btn=$('fetchBtn');
+  if(!info){ st.innerHTML='<span class="err">✗ 无法识别文档地址，请检查链接格式</span>'; return; }
+  btn.disabled=true;btn.textContent='获取中…';
+  log.style.display='block';log.textContent='';
+  const say=s=>{log.textContent+=s+'\n';log.scrollTop=log.scrollHeight;};
+  const target=tab=>`https://docs.qq.com/dop-api/opendoc?id=${info.id}${tab?`&tab=${tab}`:''}&normal=1&outformat=1&noEscape=1`;
+  const sheets=[];
+  let workProxy=null,workbook=[];
+  try{
+    // 通道0：本地数据代理（双击「启动本地代理.command」后可用，直连腾讯文档）
+    const localBase=($('localProxy').value.trim()||'http://127.0.0.1:8790').replace(/\/+$/,'');
+    const chain=[...PROXIES];
+    say(`▸ 检测本地数据代理（${localBase}）…`);
+    try{
+      const p=await fetchWithTimeout(localBase+'/ping',3000);
+      if(p.status===200&&p.text.trim()==='ok'){
+        chain.unshift({name:'本地数据代理',wrap:u=>localBase+'/qq?url='+encodeURIComponent(u)});
+        say('  ✓ 本地代理已就绪，将优先使用（稳定直连）');
+      }else say('  ✗ 本地代理未就绪');
+    }catch(e){ say('  ✗ 本地代理未启动（可双击「启动本地代理.command」）'); }
+    const tabs=info.tab?[info.tab]:[null];
+    for(const tab of tabs){
+      let got=null;
+      for(const px of chain){
+        say(`▸ 尝试${px.name} …`);
+        try{
+          const res=await fetchWithTimeout(px.wrap(target(tab)),12000);
+          const body=px.unwrap?px.unwrap(res.text):res.text;
+          if(!body||body.length<200){say(`  ✗ 返回为空(${res.status})`);continue;}
+          const json=JSON.parse(body);
+          if(!json.clientVars){say(`  ✗ 非文档数据(${res.status})`);continue;}
+          got=extractSheet(json,tab||json.clientVars?.collab_client_vars?.padSubId);
+          if(got){say(`  ✓ 成功：${got.name}（${got.rows.length}条）`);workProxy=px;workbook=got.workbook||[];}
+          else say('  ✗ 数据结构解析失败');
+        }catch(e){say(`  ✗ ${e.name==='AbortError'?'超时':'网络不可达'}`);}
+        if(got)break;
+      }
+      if(got)sheets.push({name:got.name,rows:got.rows});
+      else{ st.innerHTML='<span class="warn">⚠ 在线获取失败：公共代理通道不可用或被腾讯文档拦截（浏览器跨域限制，Cookie无法解决）。</span><br><span class="info">建议：双击同目录「启动本地代理.command」后重试（稳定直连）；或使用「手动填写」/内置快照。</span>'; throw new Error('fail'); }
+    }
+    // 拉取其余 tab
+    if(workProxy&&workbook.length>1){
+      for(const wb of workbook){
+        if(sheets.some(s=>s.name===wb.name))continue;
+        try{
+          say(`▸ 拉取分表「${wb.name}」…`);
+          const res=await fetchWithTimeout(workProxy.wrap(target(wb.id)),12000);
+          const body=workProxy.unwrap?workProxy.unwrap(res.text):res.text;
+          const json=JSON.parse(body);
+          const g=extractSheet(json,wb.id);
+          if(g&&g.rows.length){sheets.push({name:g.name,rows:g.rows});say(`  ✓ ${g.name}（${g.rows.length}条）`);}
+        }catch(e){say(`  ✗ 跳过`);}
+      }
+    }
+    state.sheets=sheets;state.source='online';
+    state.info=`在线获取 ${new Date().toLocaleString('zh-CN',{hour12:false})}`;
+    $('srcBadge').textContent=`数据源：在线获取（${sheets.length}表 / ${totalRows()}条）`;
+    renderOwners();
+    st.innerHTML=`<span class="ok">✓ 在线获取成功：${sheets.map(s=>`${s.name}${s.rows.length}条`).join('、')}</span>`;
+  }catch(e){ /* 已在上方输出状态 */ }
+  btn.disabled=false;btn.textContent='⤓ 在线获取最新数据';
+}
+
+/* ================= 事件绑定 ================= */
+document.querySelectorAll('.tab-btn').forEach(b=>{
+  b.onclick=()=>{
+    document.querySelectorAll('.tab-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    ['pane-online','pane-manual'].forEach(id=>$(id).style.display=id===b.dataset.pane?'':'none');
+  };
+});
+$('ownerChips').onclick=e=>{
+  const c=e.target.closest('.chip');if(!c)return;
+  $('empName').value=c.dataset.name;
+  document.querySelectorAll('.chip').forEach(x=>x.classList.toggle('active',x===c));
+  generate();
+};
+$('empName').oninput=()=>renderOwners();
+$('position').onchange=()=>{state.posDirty=true;$('posHint').style.display='none';};
+$('prevWeek').onclick=()=>shiftWeek(-1);
+$('nextWeek').onclick=()=>shiftWeek(1);
+$('thisWeek').onclick=()=>{state.weekMonday=mondayOf(new Date());renderWeek();};
+$('generateBtn').onclick=generate;
+$('copyDone').onclick=e=>copyText(state.copy.done,e.target);
+$('copyPlan').onclick=e=>copyText(state.copy.plan,e.target);
+$('fetchBtn').onclick=fetchOnline;
+$('parseManualBtn').onclick=()=>{
+  const st=$('manualStatus');
+  const text=$('manualInput').value;
+  if(!text.trim()){st.innerHTML='<span class="err">✗ 请先粘贴表格内容</span>';return;}
+  const res=parsePasted(text);
+  if(res.err){st.innerHTML=`<span class="err">✗ ${res.err}</span>`;return;}
+  state.sheets=[{name:res.name,rows:res.rows}];state.source='manual';
+  state.info=`手动粘贴 ${new Date().toLocaleString('zh-CN',{hour12:false})}`;
+  $('srcBadge').textContent=`数据源：手动粘贴（${res.rows.length}条）`;
+  renderOwners();
+  st.innerHTML=`<span class="ok">✓ 解析成功：${res.rows.length} 条记录，人员：${ownerSet().join('、')||'—'}</span>`;
+};
+
+/* ================= 初始化 ================= */
+loadSnapshot();
+state.weekMonday=mondayOf(new Date());
+renderWeek();
+renderOwners();
+</script>
+</body>
+</html>
